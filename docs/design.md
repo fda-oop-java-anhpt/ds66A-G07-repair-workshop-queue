@@ -1,135 +1,177 @@
-Design Document
-1. Danh sách các lớp và vai trò (Class List & Responsibilities)
-Liệt kê các class chính trong hệ thống và mô tả ngắn gọn vai trò của từng class.
-Class	Package	Vai trò
-		
-		
-		
----
-2. Áp dụng các nguyên lý OOP
-Mô tả rõ từng nguyên lý OOP được áp dụng ở đâu trong hệ thống.
-2.1. Encapsulation
-Các thuộc tính nào được khai báo `private`?
-Truy cập thông qua getter/setter nào?
-Lý do áp dụng encapsulation?
-Mô tả:
-> …
----
-2.2. Inheritance
-Class cha là gì?
-Các class con kế thừa từ đâu?
-Lý do sử dụng kế thừa?
-Mô tả:
-> …
----
-2.3. Polymorphism
-Phương thức nào được override?
-Được gọi thông qua reference kiểu cha ở đâu?
-Mô tả:
-> …
----
-2.4. Interface
-Interface nào được sử dụng?
-Vai trò của interface trong thiết kế?
-Mô tả:
-> …
----
-2.5. Abstraction
-Abstract class / method nào được sử dụng?
-Phần chi tiết nào được ẩn đi?
-Mô tả:
-> …
----
-3. Design Patterns được sử dụng
-Liệt kê các design pattern (nếu có) và giải thích ngắn gọn cách áp dụng.
-Design Pattern	Áp dụng ở đâu	Mục đích
-		
-		
-> Nếu không sử dụng design pattern nào, hãy giải thích lý do.
----
-4. Luồng hoạt động chính (Main Application Flows)
-Mô tả các luồng xử lý chính của hệ thống theo dạng từng bước.
-4.1. Login
-Người dùng nhập username và password.
-LoginView gửi thông tin đăng nhập đến AuthService.
-AuthService kiểm tra thông tin người dùng.
-Nếu hợp lệ, hệ thống chuyển sang MenuView.
----
-4.2. [Tên luồng chức năng khác]
-…
-…
-…
----
-5. Class Diagram
-Vẽ class diagram cho hệ thống bằng draw.io.
-Sơ đồ phải thể hiện:
-Quan hệ kế thừa
-Quan hệ association / composition (nếu có)
-Interface và class implement
-📌 Yêu cầu:
-Xuất sơ đồ thành file ảnh (PNG hoặc JPG).
-Lưu tại: `docs/class-diagram.png`
----
-6. Thiết kế lưu trữ dữ liệu (Database / File Design)
-6.1. Hình thức lưu trữ
-[ ] In-memory
-[ ] File (txt / csv / json)
-[x] Database (PostgreSQL)
-Mô tả lý do lựa chọn:
-> Dữ liệu có nhiều quan hệ (khách hàng, thiết bị, đơn sửa chữa, báo giá, lịch sử) và cần transaction: đổi trạng thái đơn phải đi cùng việc ghi lịch sử, duyệt/từ chối báo giá phải đi cùng việc đổi trạng thái đơn. PostgreSQL cho khóa ngoại, `CHECK` và transaction sẵn có. Truy cập bằng JDBC thuần + HikariCP. Mỗi máy dùng hai database: `repair_shop` (demo, seed ổn định) và `repair_shop_test` (test, được phép xóa và tạo lại).
----
-6.2. Cấu trúc dữ liệu lưu trữ
-Tên bảng	Mô tả	Dữ liệu chính
-`customers`	Khách hàng	`full_name`, `phone`, `email` (null), `address` (null)
-`devices`	Thiết bị của khách	`customer_id`, `device_type`, `brand`, `model`, `serial_number`
-`repair_jobs`	Đơn sửa chữa	`device_id`, `issue_description`, `status`, `desired_days`, `estimated_ready_at` (null), `closed_at` (null)
-`estimates`	Báo giá của một đơn (nhiều phiên bản)	`job_id`, `version`, `status`, `note`
-`parts`	Dòng linh kiện của một báo giá	`estimate_id`, `name`, `unit_price`, `quantity`
-`labor_services`	Dòng công thợ của một báo giá	`estimate_id`, `description`, `hours`, `hourly_rate`
-`status_history`	Lịch sử đổi trạng thái của đơn	`job_id`, `old_status` (null), `new_status`, `note`, `changed_at`
-Mọi bảng (trừ `parts`, `labor_services`, `status_history`) có `created_at`, `updated_at`; `status_history` có `changed_at`. Khóa chính là `SERIAL id`. Định nghĩa đầy đủ ở `src/main/resources/db/schema.sql`, mô tả từng cột ở `docs/contract.md` mục 4.
-6.3. Sơ đồ bảng
-```
-customers 1 ──── N devices 1 ──── N repair_jobs 1 ──── N estimates 1 ──┬── N parts
-                                        │                              └── N labor_services
-                                        └──── N status_history
-```
-Khóa ngoại	Bảng cha
-`devices.customer_id`	`customers.id`
-`repair_jobs.device_id`	`devices.id`
-`estimates.job_id`	`repair_jobs.id`
-`parts.estimate_id`	`estimates.id`
-`labor_services.estimate_id`	`estimates.id`
-`status_history.job_id`	`repair_jobs.id`
-Ràng buộc đáng chú ý: `status` của job, estimate và history có `CHECK` theo danh sách giá trị enum; `desired_days > 0`; `unit_price >= 0`, `quantity > 0`, `hours > 0`, `hourly_rate >= 0`; `UNIQUE (job_id, version)` trên `estimates`; `chk_repair_jobs_closed_at` buộc `closed_at` có giá trị khi và chỉ khi `status = 'CLOSED'`.
-Index: `repair_jobs(status)`, `repair_jobs(device_id)`, `status_history(job_id)`, `devices(customer_id)`, `parts(estimate_id)`, `labor_services(estimate_id)`. `estimates(job_id)` đã được `UNIQUE (job_id, version)` phủ.
-6.4. Lý do thiết kế
-Khóa ngoại `ON DELETE RESTRICT`, không dùng `CASCADE`.
-Đơn sửa chữa, báo giá và lịch sử là hồ sơ cần giữ. Với `CASCADE`, xóa nhầm một khách hàng sẽ kéo theo mất toàn bộ thiết bị, đơn, báo giá và lịch sử của khách đó mà không có cảnh báo. Với `RESTRICT`, DB từ chối xóa khi còn dữ liệu con, lỗi lộ ra ngay và được bọc thành `DataAccessException`. (Từ khóa `CASCADE` trong `DROP TABLE ... CASCADE` của `schema.sql` chỉ để xóa đối tượng phụ thuộc khi dựng lại DB, không liên quan đến `ON DELETE`.)
-Báo giá có `version`, quan hệ Job ↔ Estimate là 1-N.
-Khi khách chưa đồng ý, tiệm có thể báo giá lại. Thay vì sửa đè báo giá cũ (mất lịch sử), mỗi lần báo giá là một dòng mới với `version` tăng dần; bản có hiệu lực là bản `version` lớn nhất (`findLatestByJobId`). `UNIQUE (job_id, version)` đảm bảo không có hai bản cùng số.
-`version` do Repository gán chứ không do Service/UI: trong một transaction, `EstimateRepository.save()` khóa dòng job (`FOR UPDATE`) rồi lấy `MAX(version) + 1`. Khóa dòng job làm hai lần lưu đồng thời của cùng một đơn phải xếp hàng nhau thay vì cùng nhận một số. Việc gán nằm cùng chỗ với câu `INSERT` nên không thể lệch với dữ liệu thực.
-Hạn chót tính theo biểu thức, không lưu cột.
-Hạn chót = `created_at + desired_days` ngày. Nếu lưu thành cột `deadline`, cột này có thể lệch khi `created_at` hoặc `desired_days` đổi, và phải nhớ cập nhật ở mọi nơi ghi. Tính khi truy vấn thì luôn đúng:
-```sql
-ORDER BY (created_at + desired_days * INTERVAL '1 day') ASC, created_at ASC, id ASC
-```
-Hai tiêu chí sau để phá hòa và giữ thứ tự ổn định giữa các lần chạy. Với lượng đơn của một tiệm sửa chữa, `repair_jobs(status)` là đủ nên không tạo index riêng cho biểu thức. Phía Java, `RepairJob.getDeadline()` trả `createdAt.plusDays(desiredDays)` để UI hiển thị.
-Tổng tiền không lưu ở DB.
-`Estimate.getTotalCost()` cộng `getCost()` của mọi dòng (`unit_price × quantity` và `hours × hourly_rate`), nên tổng không bao giờ lệch với chi tiết.
-Tiền dùng `NUMERIC`, không dùng số thực.
-`NUMERIC(12,2)` ở DB và `BigDecimal` ở Java để tránh sai số làm tròn; `hours` dùng `NUMERIC(6,2)`.
-Trạng thái lưu `VARCHAR` + `CHECK`, không dùng kiểu enum của PostgreSQL.
-Giá trị trùng tên hằng trong Java (`JobStatus`, `EstimateStatus`). Thêm trạng thái chỉ cần sửa `CHECK` và enum, không phải `ALTER TYPE`.
-Transaction ở tầng Repository.
-Các thao tác cần nhiều bước (`saveWithInitialHistory`, `updateWithHistory`, `updateEstimateStatusAndJob`, `EstimateRepository.save`) mỗi hàm tự chạy trong một transaction, nên tầng trên không quản lý `Connection` và không import `java.sql.*`. Service kiểm tra luật nghiệp vụ trước rồi mới gọi.
-Seed data cố định.
-`seed_data.sql` gán `created_at` cụ thể cho từng đơn để thứ tự hàng đợi không đổi giữa các lần demo, và nạp lại `setval` cho các bộ đếm `SERIAL` sau khi chèn id cố định.
----
-7. Nhận xét về thiết kế (Optional)
-Ưu điểm của thiết kế hiện tại
-Hạn chế
-Hướng cải tiến trong tương lai (nếu có)
----
-8. Kết luận
-Tóm tắt ngắn gọn cách thiết kế hệ thống và cách áp dụng OOP trong project.
+# Tài liệu thiết kế – Repair Workshop Queue
+
+## 1. Kiến trúc tổng quan
+
+Ứng dụng Java Swing dùng PostgreSQL để quản lý khách hàng, thiết bị, phiếu sửa
+chữa, báo giá, lịch sử trạng thái và bảo hành. Mã nguồn được chia thành các
+package chính:
+
+| Package | Trách nhiệm |
+|---|---|
+| `ui` | Các màn hình Swing và thành phần bảng |
+| `model` | Mô hình nghiệp vụ, trạng thái và quy tắc kiểm tra dữ liệu |
+| `service` | Điều phối nghiệp vụ sửa chữa và báo giá |
+| `repository` | Hợp đồng truy cập dữ liệu |
+| `repository.impl` | Truy vấn PostgreSQL bằng JDBC |
+| `repository.mapper` | Ánh xạ `ResultSet` thành mô hình |
+| `adapter` | Đọc và chuyển đổi dữ liệu bảo hành legacy |
+| `config` | Khởi tạo kết nối và ghép các thành phần ứng dụng |
+| `exception` | Các lỗi nghiệp vụ, chuyển trạng thái và truy cập dữ liệu |
+
+`Home` tạo các tab Customers/Devices, Repair Queue, Estimate, Warranty và Job
+History. `AppContext` khởi tạo các repository và `JobService` từ cùng một
+`DataSource`; UI gọi các interface này thay vì tự tạo kết nối JDBC.
+
+## 2. Các lớp và vai trò
+
+| Class / Interface | Package | Vai trò |
+|---|---|---|
+| `Customer` | `model` | Thông tin khách hàng và kiểm tra tên, số điện thoại |
+| `Device` | `model` | Thiết bị thuộc một khách hàng |
+| `RepairJob` | `model` | Phiếu sửa chữa, mô tả lỗi, trạng thái và mốc thời gian |
+| `JobStatus` | `model` | Các trạng thái và quy tắc chuyển trạng thái |
+| `StatusHistory` | `model` | Ghi lại trạng thái trước/sau, ghi chú và thời điểm |
+| `Estimate` | `model` | Báo giá theo phiên bản, trạng thái và các hạng mục |
+| `EstimateItem` | `model` | Hợp đồng chung cho tên và chi phí của một hạng mục |
+| `Part` | `model` | Linh kiện, đơn giá và số lượng; cài đặt `EstimateItem` |
+| `LaborService` | `model` | Công sửa chữa, số giờ và đơn giá; cài đặt `EstimateItem` |
+| `WarrantyRecord` | `model` | Dữ liệu bảo hành để hiển thị |
+| `WarrantyResult` | `adapter` | Giao diện kết quả bảo hành thống nhất |
+| `WarrantyAdapter` | `adapter` | Bọc bản ghi legacy thành `WarrantyResult` |
+| `WarrantyFileImporter` | `adapter` | Đọc file legacy UTF-8 theo từng dòng |
+| `LegacyWarrantyImportAdapter` | `adapter` | Chuyển kết quả legacy đủ điều kiện thành dữ liệu import |
+| `JobService` / `JobServiceImpl` | `service` | Hợp đồng và xử lý nghiệp vụ job, báo giá, trạng thái |
+| `GenericRepository<T, ID>` | `repository` | Các thao tác CRUD dùng chung |
+| `CustomerRepository`, `DeviceRepository`, `RepairJobRepository`, `EstimateRepository`, `StatusHistoryRepository`, `WarrantyRepository` | `repository` | Các thao tác dữ liệu theo từng loại nghiệp vụ |
+| `AbstractJdbcRepository` | `repository.impl` | Dùng chung truy vấn, transaction và chuyển lỗi JDBC |
+| `*RepositoryImpl` | `repository.impl` | Cài đặt repository bằng PostgreSQL/JDBC |
+| `AppContext` | `config` | Khởi tạo và cung cấp các dependency cho UI |
+| `Home` | `ui` | Cửa sổ chính và điều phối các tab |
+
+## 3. Nguyên lý OOP
+
+### 3.1. Encapsulation
+
+Các trường dữ liệu trong các model như `Customer`, `Device`, `RepairJob` và
+`Estimate` được khai báo `private`; getter/setter chỉ được cung cấp ở những
+trường hợp cần thiết. Constructor và các hàm kiểm tra giữ các điều kiện dữ liệu
+ở gần model (ví dụ tên và số điện thoại khách hàng, mô tả lỗi, số ngày mong
+muốn). `Estimate` trả về danh sách chỉ đọc qua getter để bên ngoài không thể
+thay đổi trực tiếp danh sách nội bộ.
+
+### 3.2. Inheritance
+
+`AbstractJdbcRepository` là lớp trừu tượng cơ sở; các repository JDBC cụ thể
+như `CustomerRepositoryImpl`, `DeviceRepositoryImpl` và
+`RepairJobRepositoryImpl` kế thừa để dùng chung thao tác truy vấn, transaction
+và xử lý lỗi. Các cửa sổ Swing cũng kế thừa lớp giao diện Swing tương ứng.
+
+Kế thừa được dùng cho hạ tầng dùng chung, không phải để mô hình hóa các loại
+phiếu sửa chữa bằng các nhánh `if/else`.
+
+### 3.3. Polymorphism và interface
+
+- `Part` và `LaborService` cùng cài đặt `EstimateItem`, cung cấp tên và chi phí
+  theo cách riêng.
+- `WarrantyAdapter` cài đặt `WarrantyResult`; file importer trả về danh sách
+  kết quả qua interface này thay vì buộc UI phụ thuộc trực tiếp vào cấu trúc
+  bản ghi legacy.
+- `JobServiceImpl` cài đặt `JobService`; repository JDBC cài đặt các interface
+  repository tương ứng. `AppContext` cung cấp chúng cho các màn hình.
+
+### 3.4. Abstraction
+
+`JobService` mô tả các thao tác nghiệp vụ mà UI cần mà không phơi bày chi tiết
+SQL. `GenericRepository` định nghĩa các thao tác CRUD phổ biến. Lớp trừu tượng
+`AbstractJdbcRepository` gom chi tiết JDBC dùng chung cho các repository cụ
+thể. Không có abstract model dùng để phân loại thiết bị hoặc loại job trong
+domain.
+
+## 4. Design pattern và cấu trúc thiết kế
+
+| Pattern / cấu trúc | Nơi áp dụng | Mục đích |
+|---|---|---|
+| Adapter | `WarrantyAdapter`, `WarrantyFileImporter` | Chuyển bản ghi legacy thành hợp đồng `WarrantyResult` dùng chung |
+| Adapter chuyển đổi nghiệp vụ | `LegacyWarrantyImportAdapter` | Chuyển kết quả bảo hành legacy sang `LegacyWarrantyImport`; kết quả `NOT_COVERED` không tạo dữ liệu import |
+| Repository | Các interface repository và lớp `*RepositoryImpl` | Tách truy cập PostgreSQL khỏi UI và nghiệp vụ |
+| Composition root | `AppContext` | Tạo và nối các repository, service từ một `DataSource` |
+
+## 5. Các quan hệ chính
+
+- Một `Customer` có thể gắn với nhiều `Device`; mỗi `Device` tham chiếu một
+  khách hàng.
+- `RepairJob` tham chiếu một `Device`. Job lưu thông tin lỗi, trạng thái, thời
+  hạn mong muốn và các mốc thời gian.
+- Một job có thể có nhiều `Estimate` theo phiên bản. Mỗi estimate chứa các
+  `Part` và `LaborService`; tổng tiền được tính từ chi phí của các hạng mục.
+- `StatusHistory` ghi các lần thay đổi trạng thái của job.
+- `WarrantyRecord` liên kết dữ liệu bảo hành với thiết bị và, khi có, job sửa
+  chữa.
+
+## 6. Luồng hoạt động
+
+### 6.1. Khởi động
+
+1. `Home` gọi `AppContext.create()`.
+2. `AppContext` lấy `DataSource` từ cấu hình kết nối và khởi tạo repository,
+   service.
+3. `Home` tạo năm tab và chia sẻ các thao tác làm mới sau khi dữ liệu thay đổi.
+
+### 6.2. Tạo khách hàng, thiết bị và job
+
+1. Nhân viên nhập khách hàng và thiết bị trong tab Customers/Devices.
+2. Khi tạo job, UI gọi `JobService.createJob` với thiết bị, mô tả lỗi và số
+   ngày mong muốn.
+3. Service xác nhận thiết bị tồn tại, tạo job ở trạng thái `RECEIVED` và lưu
+   lịch sử ban đầu.
+
+### 6.3. Báo giá và xử lý job
+
+1. Job chuyển theo các trạng thái được khai báo trong `JobStatus`: `RECEIVED`,
+   `DIAGNOSING`, `WAITING_FOR_APPROVAL`, `REPAIRING`, `READY`, `CLOSED`.
+2. Khi chẩn đoán hoặc chờ duyệt, nhân viên có thể lập estimate gồm linh kiện
+   và công sửa chữa; chi phí được tính từ các hạng mục.
+3. Duyệt estimate mới nhất sẽ cập nhật estimate thành `APPROVED` và job sang
+   `REPAIRING`; từ chối estimate sẽ cập nhật thành `REJECTED` và đóng job.
+4. Các thay đổi trạng thái được ghi vào `status_history`. Việc cập nhật job và
+   lịch sử được thực hiện qua repository.
+5. Job ở `READY` có thể chuyển sang `CLOSED` qua luồng cập nhật trạng thái.
+
+### 6.4. Nhập và quản lý bảo hành
+
+1. `WarrantyFileImporter` đọc file UTF-8, mỗi dòng có dạng
+   `serialNumber|status|description`.
+2. `WarrantyAdapter` biểu diễn mỗi bản ghi legacy theo `WarrantyResult`.
+3. `LegacyWarrantyImportAdapter` chuyển kết quả được bảo hành thành dữ liệu
+   import; kết quả `NOT_COVERED` được bỏ qua.
+4. Tab Warranty dùng `WarrantyRepository` để hiển thị và quản lý dữ liệu bảo
+   hành trong cơ sở dữ liệu.
+
+## 7. Lưu trữ dữ liệu
+
+Ứng dụng dùng PostgreSQL qua JDBC. Schema định nghĩa các bảng:
+
+| Bảng | Dữ liệu |
+|---|---|
+| `customers` | Thông tin khách hàng |
+| `devices` | Thiết bị và khóa ngoại tới khách hàng |
+| `repair_jobs` | Job, trạng thái, mô tả lỗi và thời gian |
+| `estimates` | Báo giá, phiên bản và trạng thái |
+| `parts` | Linh kiện và số lượng theo estimate |
+| `labor_services` | Công sửa chữa theo estimate |
+| `status_history` | Lịch sử trạng thái của job |
+| `warranties` | Bảo hành native hoặc import legacy |
+| `payments` | Bảng thanh toán được khai báo trong schema |
+
+Schema còn định nghĩa các view phục vụ Repair Queue và Warranty. Dù bảng
+`payments` có trong schema, hiện chưa có model, repository hay màn hình thanh
+toán tương ứng trong mã Java. Vì vậy không nên coi điều kiện thanh toán là đã
+được kiểm tra khi đóng job.
+
+## 8. Giới hạn và hướng hoàn thiện
+
+- Chưa có xử lý thanh toán trong Java để ngăn đóng job khi chưa thanh toán.
+- Chưa có file sơ đồ lớp `docs/class-diagram.png`; cần bổ sung nếu đây là yêu
+  cầu bàn giao của nhóm.
+- Thông tin đóng góp từng thành viên và phần tự đánh giá cần do nhóm xác nhận,
+  không thể suy ra chỉ từ mã nguồn.
