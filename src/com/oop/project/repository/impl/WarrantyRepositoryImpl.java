@@ -37,10 +37,17 @@ public class WarrantyRepositoryImpl extends AbstractJdbcRepository implements Wa
     @Override
     public List<WarrantyRecord> findAll() {
         String sql = """
-                SELECT warranty_id, repair_id, serial_number, device_name, customer_name,
-                       start_date, end_date, source, warranty_status
-                FROM v_warranty_list
-                ORDER BY end_date DESC, warranty_id DESC
+                SELECT w.id AS warranty_id, w.repair_job_id AS repair_id,
+                       d.serial_number,
+                       COALESCE(NULLIF(TRIM(CONCAT_WS(' ', d.brand, d.model)), ''),
+                                d.device_type) AS device_name,
+                       c.full_name AS customer_name, w.start_date, w.end_date, w.source,
+                       CASE WHEN w.end_date >= CURRENT_DATE
+                            THEN 'VALID' ELSE 'EXPIRED' END AS warranty_status
+                FROM warranties w
+                JOIN devices d ON d.id = w.device_id
+                JOIN customers c ON c.id = d.customer_id
+                ORDER BY w.end_date DESC, w.id DESC
                 """;
         return queryList("Lấy danh sách bảo hành", sql, NO_PARAMS, rs -> new WarrantyRecord(
                 rs.getInt("warranty_id"),
@@ -57,13 +64,25 @@ public class WarrantyRepositoryImpl extends AbstractJdbcRepository implements Wa
     @Override
     public List<WarrantyCandidate> findCandidates() {
         String sql = """
-                SELECT repair_id, device_id, device_name, customer_name, received_at, completed_at
-                FROM v_warranty_candidates
+                SELECT j.id AS repair_id, d.serial_number,
+                       COALESCE(NULLIF(TRIM(CONCAT_WS(' ', d.brand, d.model)), ''),
+                                d.device_type) AS device_name,
+                       c.full_name AS customer_name, j.created_at AS received_at,
+                       (SELECT MAX(h.changed_at)
+                          FROM status_history h
+                         WHERE h.job_id = j.id AND h.new_status = 'READY') AS completed_at
+                FROM repair_jobs j
+                JOIN devices d ON d.id = j.device_id
+                JOIN customers c ON c.id = d.customer_id
+                WHERE j.status IN ('READY', 'CLOSED')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM warranties w WHERE w.repair_job_id = j.id
+                  )
                 ORDER BY completed_at DESC NULLS LAST, repair_id DESC
                 """;
         return queryList("Lấy đơn đủ điều kiện tạo bảo hành", sql, NO_PARAMS, rs -> new WarrantyCandidate(
                 rs.getInt("repair_id"),
-                rs.getString("serial_number"), // Đổi từ getInt("device_id") sang getString("serial_number")
+                rs.getString("serial_number"),
                 rs.getString("device_name"),
                 rs.getString("customer_name"),
                 rs.getTimestamp("received_at").toLocalDateTime(),
