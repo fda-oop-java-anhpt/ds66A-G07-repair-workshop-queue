@@ -314,6 +314,7 @@ public final class AppTheme {
 
             if (component instanceof JButton button) {
                 styleSecondaryButton(button);
+                stabilizeButtonSize(button);
 
             } else if (component instanceof JLabel label) {
                 styleBodyLabel(label);
@@ -335,5 +336,12 @@ public final class AppTheme {
                 applyTo(child);
             }
         }
+    }
+
+    private static void stabilizeButtonSize(JButton button) {
+        Dimension size = button.getPreferredSize();
+        button.setMinimumSize(new Dimension(size));
+        button.setPreferredSize(new Dimension(size));
+        button.setMaximumSize(new Dimension(size));
     }
 }

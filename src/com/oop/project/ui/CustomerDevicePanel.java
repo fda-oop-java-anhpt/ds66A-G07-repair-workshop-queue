@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -37,6 +38,7 @@ public class CustomerDevicePanel extends JPanel {
     private static final String[] DEVICE_TYPES = {
             "Điều hòa", "Máy giặt", "Tủ lạnh", "Laptop", "Điện thoại", "Máy tính bàn", "Tivi", "Khác"
     };
+    private static final String DEVICE_TYPE_PROMPT = "Select device type...";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9_%+-]+(?:\\.[A-Za-z0-9_%+-]+)*@"
                     + "(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$");
@@ -267,7 +269,7 @@ public class CustomerDevicePanel extends JPanel {
         JLabel emailValidation = validationLabel();
         JPanel form = customerForm(name, phone, email, address, nameValidation, phoneValidation, emailValidation);
         if (!showCustomerDialog("Add customer", "Add", form, name, nameValidation, phone, phoneValidation,
-                email, emailValidation)) {
+                email, emailValidation, false)) {
             return;
         }
         try {
@@ -295,7 +297,7 @@ public class CustomerDevicePanel extends JPanel {
         JLabel emailValidation = validationLabel();
         JPanel form = customerForm(name, phone, email, address, nameValidation, phoneValidation, emailValidation);
         if (!showCustomerDialog("Edit customer", "Save", form, name, nameValidation, phone, phoneValidation,
-                email, emailValidation)) {
+                email, emailValidation, true)) {
             return;
         }
         try {
@@ -325,23 +327,31 @@ public class CustomerDevicePanel extends JPanel {
 
     private boolean showCustomerDialog(String title, String saveLabel, JPanel form,
             JTextField name, JLabel nameValidation, JTextField phone, JLabel phoneValidation,
-            JTextField email, JLabel emailValidation) {
+            JTextField email, JLabel emailValidation, boolean showCancelButton) {
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), title,
                 Dialog.ModalityType.APPLICATION_MODAL);
         JButton saveButton = new JButton(saveLabel);
-        JButton cancelButton = new JButton("Cancel");
         AppTheme.stylePrimaryButton(saveButton);
-        AppTheme.styleSecondaryButton(cancelButton);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttons.add(cancelButton);
+        JButton cancelButton = null;
+        if (showCancelButton) {
+            cancelButton = new JButton("Cancel");
+            AppTheme.styleSecondaryButton(cancelButton);
+            buttons.add(cancelButton);
+        }
         buttons.add(saveButton);
         boolean[] saved = { false };
+        boolean[] validationRequested = { false };
+        boolean[] formValid = { false };
 
         Runnable validate = () -> {
-            boolean nameValid = validateNameInput(name, nameValidation);
-            boolean phoneValid = validatePhoneInput(phone, phoneValidation);
-            boolean emailValid = validateEmailInput(email, emailValidation);
-            saveButton.setEnabled(nameValid && phoneValid && emailValid);
+            formValid[0] = isNameValid(name) && isPhoneValid(phone) && isEmailValid(email);
+            if (validationRequested[0]) {
+                validateNameInput(name, nameValidation);
+                validatePhoneInput(phone, phoneValidation);
+                validateEmailInput(email, emailValidation);
+            }
+            styleSubmitButton(saveButton, saveLabel, formValid[0]);
         };
         addValidationListener(name, validate);
         addValidationListener(phone, validate);
@@ -349,17 +359,21 @@ public class CustomerDevicePanel extends JPanel {
         validate.run();
 
         dialog.setLayout(new BorderLayout(8, 8));
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.add(form, BorderLayout.CENTER);
         dialog.add(buttons, BorderLayout.SOUTH);
         dialog.getRootPane().setDefaultButton(saveButton);
         saveButton.addActionListener(event -> {
+            validationRequested[0] = true;
             validate.run();
-            if (saveButton.isEnabled()) {
+            if (formValid[0]) {
                 saved[0] = true;
                 dialog.dispose();
             }
         });
-        cancelButton.addActionListener(event -> dialog.dispose());
+        if (cancelButton != null) {
+            cancelButton.addActionListener(event -> dialog.dispose());
+        }
         dialog.pack();
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
@@ -367,12 +381,13 @@ public class CustomerDevicePanel extends JPanel {
     }
 
     private static boolean validateNameInput(JTextField name, JLabel validation) {
-        if (name.getText().isBlank()) {
-            validation.setText("Name is required.");
-            return false;
-        }
-        validation.setText(" ");
-        return true;
+        boolean valid = isNameValid(name);
+        validation.setText(valid ? " " : "Name is required.");
+        return valid;
+    }
+
+    private static boolean isNameValid(JTextField name) {
+        return !name.getText().isBlank();
     }
 
     private static boolean validatePhoneInput(JTextField phone, JLabel validation) {
@@ -389,6 +404,10 @@ public class CustomerDevicePanel extends JPanel {
         return validation.getText().isBlank();
     }
 
+    private static boolean isPhoneValid(JTextField phone) {
+        return phone.getText().trim().matches("\\d{10}");
+    }
+
     private static boolean validateEmailInput(JTextField email, JLabel validation) {
         String value = email.getText().trim();
         if (value.isEmpty()) {
@@ -401,6 +420,11 @@ public class CustomerDevicePanel extends JPanel {
             validation.setText(" ");
         }
         return validation.getText().isBlank();
+    }
+
+    private static boolean isEmailValid(JTextField email) {
+        String value = email.getText().trim();
+        return value.isEmpty() || (value.length() <= 100 && EMAIL_PATTERN.matcher(value).matches());
     }
 
     private void deleteCustomer() {
@@ -428,13 +452,13 @@ public class CustomerDevicePanel extends JPanel {
             showMessage("Select a customer first.");
             return;
         }
-        JComboBox<String> type = new JComboBox<>(DEVICE_TYPES);
+        JComboBox<String> type = createDeviceTypeCombo();
+        JLabel typeValidation = validationLabel();
         JTextField brand = new JTextField(20);
         JTextField model = new JTextField(20);
         JTextField serial = new JTextField(20);
-        JPanel form = deviceForm(type, brand, model, serial);
-        if (JOptionPane.showConfirmDialog(this, form, "Add device", JOptionPane.OK_CANCEL_OPTION)
-                != JOptionPane.OK_OPTION) {
+        JPanel form = deviceForm(type, brand, model, serial, typeValidation);
+        if (!showDeviceDialog("Add device", "Add", form, type, typeValidation, false)) {
             return;
         }
         try {
@@ -452,14 +476,14 @@ public class CustomerDevicePanel extends JPanel {
             showMessage("Select a device first.");
             return;
         }
-        JComboBox<String> type = new JComboBox<>(DEVICE_TYPES);
+        JComboBox<String> type = createDeviceTypeCombo();
         type.setSelectedItem(device.getDeviceType());
+        JLabel typeValidation = validationLabel();
         JTextField brand = new JTextField(valueOrEmpty(device.getBrand()), 20);
         JTextField model = new JTextField(valueOrEmpty(device.getModel()), 20);
         JTextField serial = new JTextField(valueOrEmpty(device.getSerialNumber()), 20);
-        JPanel form = deviceForm(type, brand, model, serial);
-        if (JOptionPane.showConfirmDialog(this, form, "Edit device", JOptionPane.OK_CANCEL_OPTION)
-                != JOptionPane.OK_OPTION) {
+        JPanel form = deviceForm(type, brand, model, serial, typeValidation);
+        if (!showDeviceDialog("Edit device", "Save", form, type, typeValidation, true)) {
             return;
         }
         try {
@@ -473,10 +497,21 @@ public class CustomerDevicePanel extends JPanel {
         }
     }
 
-    private JPanel deviceForm(JComboBox<String> type, JTextField brand, JTextField model, JTextField serial) {
+    private static JComboBox<String> createDeviceTypeCombo() {
+        JComboBox<String> type = new JComboBox<>();
+        type.addItem(DEVICE_TYPE_PROMPT);
+        for (String deviceType : DEVICE_TYPES) {
+            type.addItem(deviceType);
+        }
+        AppTheme.styleComboBox(type);
+        return type;
+    }
+
+    private JPanel deviceForm(JComboBox<String> type, JTextField brand, JTextField model, JTextField serial,
+            JLabel typeValidation) {
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 6, 6));
         form.add(requiredLabel("Device type"));
-        form.add(type);
+        form.add(fieldWithValidation(type, typeValidation));
         form.add(new JLabel("Brand"));
         form.add(brand);
         form.add(new JLabel("Model"));
@@ -484,6 +519,76 @@ public class CustomerDevicePanel extends JPanel {
         form.add(new JLabel("Serial number"));
         form.add(serial);
         return form;
+    }
+
+    private boolean showDeviceDialog(String title, String saveLabel, JPanel form, JComboBox<String> type,
+            JLabel typeValidation, boolean showCancelButton) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), title,
+                Dialog.ModalityType.APPLICATION_MODAL);
+        JButton saveButton = new JButton(saveLabel);
+        AppTheme.stylePrimaryButton(saveButton);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton cancelButton = null;
+        if (showCancelButton) {
+            cancelButton = new JButton("Cancel");
+            AppTheme.styleSecondaryButton(cancelButton);
+            buttons.add(cancelButton);
+        }
+        buttons.add(saveButton);
+        boolean[] saved = { false };
+        boolean[] validationRequested = { false };
+        boolean[] typeValid = { false };
+        Runnable validate = () -> {
+            typeValid[0] = isDeviceTypeValid(type);
+            if (validationRequested[0]) {
+                validateDeviceType(type, typeValidation);
+            }
+            styleSubmitButton(saveButton, saveLabel, typeValid[0]);
+        };
+        type.addActionListener(event -> validate.run());
+        validate.run();
+
+        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.add(form, BorderLayout.CENTER);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(saveButton);
+        saveButton.addActionListener(event -> {
+            validationRequested[0] = true;
+            validate.run();
+            if (typeValid[0]) {
+                saved[0] = true;
+                dialog.dispose();
+            }
+        });
+        if (cancelButton != null) {
+            cancelButton.addActionListener(event -> dialog.dispose());
+        }
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        return saved[0];
+    }
+
+    private static boolean validateDeviceType(JComboBox<String> type, JLabel validation) {
+        boolean valid = isDeviceTypeValid(type);
+        validation.setText(valid ? " " : "Select a device type.");
+        return valid;
+    }
+
+    private static boolean isDeviceTypeValid(JComboBox<String> type) {
+        Object selectedType = type.getSelectedItem();
+        return selectedType != null && !DEVICE_TYPE_PROMPT.equals(selectedType);
+    }
+
+    private static void styleSubmitButton(JButton button, String label, boolean valid) {
+        button.setText(label);
+        button.setEnabled(true);
+        button.setBackground(valid ? AppTheme.PRIMARY : AppTheme.SOFT_SURFACE);
+        button.setForeground(valid ? AppTheme.TEXT : AppTheme.TEXT_SECONDARY);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
+        button.setBorderPainted(true);
     }
 
     private void deleteDevice() {
@@ -676,7 +781,7 @@ public class CustomerDevicePanel extends JPanel {
         return label;
     }
 
-    private static JPanel fieldWithValidation(JTextField field, JLabel validation) {
+    private static JPanel fieldWithValidation(JComponent field, JLabel validation) {
         JPanel panel = new JPanel(new BorderLayout(0, 2));
         panel.add(field, BorderLayout.CENTER);
         panel.add(validation, BorderLayout.SOUTH);

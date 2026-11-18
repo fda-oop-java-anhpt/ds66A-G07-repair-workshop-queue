@@ -75,9 +75,10 @@ quan.
    nhấn Enter). Xóa nội dung tìm kiếm để tải lại danh sách đầy đủ.
 2. **Thêm khách hàng:** chọn **Add customer**, điền tên và điện thoại (được
    đánh dấu `*` là bắt buộc). Điện thoại chỉ gồm chữ số và có đúng 10 chữ số;
-   biểu mẫu hiển thị cảnh báo bên dưới trường nhập và chỉ cho lưu khi hợp lệ.
-   Email và địa chỉ là tùy chọn; nếu nhập email sai định dạng, cảnh báo cũng
-   hiện bên dưới trường nhập và nút lưu bị khóa. Khách hàng mới được chọn sau
+   email và địa chỉ là tùy chọn, nhưng email phải đúng định dạng nếu được nhập.
+   Cảnh báo hiện dưới trường tương ứng khi bấm **Add**; form giữ nguyên dữ liệu
+   để sửa. Nút **Add** hiển thị nhạt khi dữ liệu chưa hợp lệ nhưng vẫn bấm được.
+   Đóng cửa sổ bằng **X** nếu muốn bỏ thao tác. Khách hàng mới được chọn sau
    khi lưu.
 3. **Sửa/xóa khách hàng:** chọn một khách hàng trước khi dùng **Edit customer**
    hoặc **Delete customer**. Xóa cần xác nhận; thao tác có thể bị từ chối nếu
@@ -86,7 +87,10 @@ quan.
    **Edit device** hoặc **Delete device**; các thao tác này yêu cầu đã chọn
    khách hàng, và sửa/xóa yêu cầu chọn thêm thiết bị. Chọn **Device type** từ
    danh sách có sẵn (Điều hòa, Máy giặt, Tủ lạnh, Laptop, Điện thoại, Máy tính
-   bàn, Tivi hoặc Khác); các trường khác là tùy chọn.
+   bàn, Tivi hoặc Khác); cần chọn loại thiết bị trước khi lưu, các trường khác
+   là tùy chọn. Nếu chưa chọn loại, nút **Add** hiển thị nhạt nhưng vẫn bấm
+   được; cảnh báo hiện dưới trường chọn và form giữ nguyên để sửa. Biểu mẫu
+   thêm chỉ có nút **Add**; đóng cửa sổ bằng **X** để bỏ thao tác.
 5. **Tạo repair job:** chọn thiết bị rồi chọn **Create repair job**. Nhập mô tả
    sự cố và số ngày dự kiến (được đánh dấu `*`; số ngày phải là số nguyên lớn
    hơn 0). Khi lưu thành công, job bắt đầu ở trạng thái `RECEIVED`.
