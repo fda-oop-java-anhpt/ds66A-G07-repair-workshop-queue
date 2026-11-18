@@ -34,6 +34,7 @@ CREATE TABLE customers (
     id          SERIAL        PRIMARY KEY,
     full_name   VARCHAR(100)  NOT NULL,
     phone       VARCHAR(20)   NOT NULL,
+    CONSTRAINT chk_customers_phone_length CHECK (phone ~ '^[0-9]{10}$'),
     email       VARCHAR(100),
     address     VARCHAR(255),
     created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,

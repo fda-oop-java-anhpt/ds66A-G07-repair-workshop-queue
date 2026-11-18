@@ -7,9 +7,9 @@
 
 | Thành viên | Phần việc đã thực hiện | Bằng chứng / ghi chú |
 |---|---|---|
-| Dương Minh Anh | [Nhóm điền] | [Nhóm điền] |
-| Hà Thu Hà | [Nhóm điền] | [Nhóm điền] |
-| Đinh Vân Anh | [Nhóm điền] | [Nhóm điền] |
+| Dương Minh Anh | Thiết kế logic và Adapter | [] |
+| Hà Thu Hà | Thiết kế UI | [] |
+| Đinh Vân Anh | Thiết kế Database | [] |
 
 ## Design Decisions
 

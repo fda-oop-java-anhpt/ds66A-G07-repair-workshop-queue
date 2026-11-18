@@ -6,6 +6,7 @@ import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -33,6 +34,12 @@ import com.oop.project.ui.theme.AppTheme;
 public class CustomerDevicePanel extends JPanel {
     private static final DateTimeFormatter DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final String[] DEVICE_TYPES = {
+            "Điều hòa", "Máy giặt", "Tủ lạnh", "Laptop", "Điện thoại", "Máy tính bàn", "Tivi", "Khác"
+    };
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9_%+-]+(?:\\.[A-Za-z0-9_%+-]+)*@"
+                    + "(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$");
     private final AppContext context;
     private final Runnable afterJobCreated;
     private final RefreshableTableModel customerModel = new RefreshableTableModel(
@@ -240,6 +247,12 @@ public class CustomerDevicePanel extends JPanel {
         return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
+    private static JLabel requiredLabel(String text) {
+        JLabel label = new JLabel(text + " *");
+        label.setForeground(AppTheme.DANGER);
+        return label;
+    }
+
     private static String formatDateTime(java.time.LocalDateTime dateTime) {
         return dateTime == null ? "—" : DATE_TIME_FORMAT.format(dateTime);
     }
@@ -249,9 +262,12 @@ public class CustomerDevicePanel extends JPanel {
         JTextField phone = new JTextField(22);
         JTextField email = new JTextField(22);
         JTextField address = new JTextField(22);
-        JPanel form = customerForm(name, phone, email, address);
-        if (JOptionPane.showConfirmDialog(this, form, "Add customer", JOptionPane.OK_CANCEL_OPTION)
-                != JOptionPane.OK_OPTION) {
+        JLabel nameValidation = validationLabel();
+        JLabel phoneValidation = validationLabel();
+        JLabel emailValidation = validationLabel();
+        JPanel form = customerForm(name, phone, email, address, nameValidation, phoneValidation, emailValidation);
+        if (!showCustomerDialog("Add customer", "Add", form, name, nameValidation, phone, phoneValidation,
+                email, emailValidation)) {
             return;
         }
         try {
@@ -274,9 +290,12 @@ public class CustomerDevicePanel extends JPanel {
         JTextField phone = new JTextField(customer.getPhone(), 22);
         JTextField email = new JTextField(valueOrEmpty(customer.getEmail()), 22);
         JTextField address = new JTextField(valueOrEmpty(customer.getAddress()), 22);
-        JPanel form = customerForm(name, phone, email, address);
-        if (JOptionPane.showConfirmDialog(this, form, "Edit customer", JOptionPane.OK_CANCEL_OPTION)
-                != JOptionPane.OK_OPTION) {
+        JLabel nameValidation = validationLabel();
+        JLabel phoneValidation = validationLabel();
+        JLabel emailValidation = validationLabel();
+        JPanel form = customerForm(name, phone, email, address, nameValidation, phoneValidation, emailValidation);
+        if (!showCustomerDialog("Edit customer", "Save", form, name, nameValidation, phone, phoneValidation,
+                email, emailValidation)) {
             return;
         }
         try {
@@ -290,17 +309,98 @@ public class CustomerDevicePanel extends JPanel {
         }
     }
 
-    private JPanel customerForm(JTextField name, JTextField phone, JTextField email, JTextField address) {
+    private JPanel customerForm(JTextField name, JTextField phone, JTextField email, JTextField address,
+            JLabel nameValidation, JLabel phoneValidation, JLabel emailValidation) {
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 6, 6));
-        form.add(new JLabel("Full name"));
-        form.add(name);
-        form.add(new JLabel("Phone"));
-        form.add(phone);
+        form.add(requiredLabel("Full name"));
+        form.add(fieldWithValidation(name, nameValidation));
+        form.add(requiredLabel("Phone"));
+        form.add(fieldWithValidation(phone, phoneValidation));
         form.add(new JLabel("Email"));
-        form.add(email);
+        form.add(fieldWithValidation(email, emailValidation));
         form.add(new JLabel("Address"));
         form.add(address);
         return form;
+    }
+
+    private boolean showCustomerDialog(String title, String saveLabel, JPanel form,
+            JTextField name, JLabel nameValidation, JTextField phone, JLabel phoneValidation,
+            JTextField email, JLabel emailValidation) {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), title,
+                Dialog.ModalityType.APPLICATION_MODAL);
+        JButton saveButton = new JButton(saveLabel);
+        JButton cancelButton = new JButton("Cancel");
+        AppTheme.stylePrimaryButton(saveButton);
+        AppTheme.styleSecondaryButton(cancelButton);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttons.add(cancelButton);
+        buttons.add(saveButton);
+        boolean[] saved = { false };
+
+        Runnable validate = () -> {
+            boolean nameValid = validateNameInput(name, nameValidation);
+            boolean phoneValid = validatePhoneInput(phone, phoneValidation);
+            boolean emailValid = validateEmailInput(email, emailValidation);
+            saveButton.setEnabled(nameValid && phoneValid && emailValid);
+        };
+        addValidationListener(name, validate);
+        addValidationListener(phone, validate);
+        addValidationListener(email, validate);
+        validate.run();
+
+        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.add(form, BorderLayout.CENTER);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(saveButton);
+        saveButton.addActionListener(event -> {
+            validate.run();
+            if (saveButton.isEnabled()) {
+                saved[0] = true;
+                dialog.dispose();
+            }
+        });
+        cancelButton.addActionListener(event -> dialog.dispose());
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        return saved[0];
+    }
+
+    private static boolean validateNameInput(JTextField name, JLabel validation) {
+        if (name.getText().isBlank()) {
+            validation.setText("Name is required.");
+            return false;
+        }
+        validation.setText(" ");
+        return true;
+    }
+
+    private static boolean validatePhoneInput(JTextField phone, JLabel validation) {
+        String value = phone.getText().trim();
+        if (value.isEmpty()) {
+            validation.setText("Phone is required.");
+        } else if (!value.matches("\\d+")) {
+            validation.setText("Phone must contain digits only.");
+        } else if (value.length() != 10) {
+            validation.setText("Phone must contain exactly 10 digits.");
+        } else {
+            validation.setText(" ");
+        }
+        return validation.getText().isBlank();
+    }
+
+    private static boolean validateEmailInput(JTextField email, JLabel validation) {
+        String value = email.getText().trim();
+        if (value.isEmpty()) {
+            validation.setText(" ");
+        } else if (value.length() > 100) {
+            validation.setText("Email must be 100 characters or fewer.");
+        } else if (!EMAIL_PATTERN.matcher(value).matches()) {
+            validation.setText("Enter a valid email address.");
+        } else {
+            validation.setText(" ");
+        }
+        return validation.getText().isBlank();
     }
 
     private void deleteCustomer() {
@@ -328,7 +428,7 @@ public class CustomerDevicePanel extends JPanel {
             showMessage("Select a customer first.");
             return;
         }
-        JTextField type = new JTextField(20);
+        JComboBox<String> type = new JComboBox<>(DEVICE_TYPES);
         JTextField brand = new JTextField(20);
         JTextField model = new JTextField(20);
         JTextField serial = new JTextField(20);
@@ -338,7 +438,7 @@ public class CustomerDevicePanel extends JPanel {
             return;
         }
         try {
-            context.deviceRepository().save(new Device(customer, type.getText(), brand.getText(),
+            context.deviceRepository().save(new Device(customer, type.getSelectedItem().toString(), brand.getText(),
                     model.getText(), serial.getText()));
             loadSelectedCustomerDevices();
         } catch (RuntimeException exception) {
@@ -352,7 +452,8 @@ public class CustomerDevicePanel extends JPanel {
             showMessage("Select a device first.");
             return;
         }
-        JTextField type = new JTextField(device.getDeviceType(), 20);
+        JComboBox<String> type = new JComboBox<>(DEVICE_TYPES);
+        type.setSelectedItem(device.getDeviceType());
         JTextField brand = new JTextField(valueOrEmpty(device.getBrand()), 20);
         JTextField model = new JTextField(valueOrEmpty(device.getModel()), 20);
         JTextField serial = new JTextField(valueOrEmpty(device.getSerialNumber()), 20);
@@ -362,7 +463,8 @@ public class CustomerDevicePanel extends JPanel {
             return;
         }
         try {
-            Device updated = new Device(device.getId(), device.getCustomer(), type.getText(), brand.getText(),
+            Device updated = new Device(device.getId(), device.getCustomer(),
+                    type.getSelectedItem().toString(), brand.getText(),
                     model.getText(), serial.getText(), device.getCreatedAt(), device.getUpdatedAt());
             context.deviceRepository().update(updated);
             loadSelectedCustomerDevices();
@@ -371,9 +473,9 @@ public class CustomerDevicePanel extends JPanel {
         }
     }
 
-    private JPanel deviceForm(JTextField type, JTextField brand, JTextField model, JTextField serial) {
+    private JPanel deviceForm(JComboBox<String> type, JTextField brand, JTextField model, JTextField serial) {
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 6, 6));
-        form.add(new JLabel("Device type"));
+        form.add(requiredLabel("Device type"));
         form.add(type);
         form.add(new JLabel("Brand"));
         form.add(brand);
@@ -414,9 +516,9 @@ public class CustomerDevicePanel extends JPanel {
         JLabel descriptionError = validationLabel();
         JLabel daysError = validationLabel();
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 6, 6));
-        form.add(new JLabel("Issue description"));
+        form.add(requiredLabel("Issue description"));
         form.add(fieldWithValidation(description, descriptionError));
-        form.add(new JLabel("Desired days"));
+        form.add(requiredLabel("Desired days"));
         form.add(fieldWithValidation(desiredDays, daysError));
 
         Runnable validate = () -> {

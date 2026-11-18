@@ -33,8 +33,8 @@ public class Customer {
             throw new DomainException("Phone Number only contains numbers");
         }
 
-        if (!phone.matches("\\d{9,11}")) {
-            throw new DomainException("Phone Number must contain between 9 and 11 digits");
+        if (!phone.matches("\\d{10}")) {
+            throw new DomainException("Phone Number must contain exactly 10 digits");
         }
 
         return phone;

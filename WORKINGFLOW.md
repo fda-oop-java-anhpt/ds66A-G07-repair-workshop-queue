@@ -73,17 +73,23 @@ quan.
 
 1. **Tìm khách hàng:** nhập tên hoặc số điện thoại rồi chọn **Search** (hoặc
    nhấn Enter). Xóa nội dung tìm kiếm để tải lại danh sách đầy đủ.
-2. **Thêm khách hàng:** chọn **Add customer**, điền tên, điện thoại, email và
-   địa chỉ, rồi xác nhận. Khách hàng mới được chọn sau khi lưu.
+2. **Thêm khách hàng:** chọn **Add customer**, điền tên và điện thoại (được
+   đánh dấu `*` là bắt buộc). Điện thoại chỉ gồm chữ số và có đúng 10 chữ số;
+   biểu mẫu hiển thị cảnh báo bên dưới trường nhập và chỉ cho lưu khi hợp lệ.
+   Email và địa chỉ là tùy chọn; nếu nhập email sai định dạng, cảnh báo cũng
+   hiện bên dưới trường nhập và nút lưu bị khóa. Khách hàng mới được chọn sau
+   khi lưu.
 3. **Sửa/xóa khách hàng:** chọn một khách hàng trước khi dùng **Edit customer**
    hoặc **Delete customer**. Xóa cần xác nhận; thao tác có thể bị từ chối nếu
    dữ liệu liên quan trong database không cho phép xóa.
 4. **Quản lý thiết bị:** chọn khách hàng để xem thiết bị. Dùng **Add device**,
    **Edit device** hoặc **Delete device**; các thao tác này yêu cầu đã chọn
-   khách hàng, và sửa/xóa yêu cầu chọn thêm thiết bị.
+   khách hàng, và sửa/xóa yêu cầu chọn thêm thiết bị. Chọn **Device type** từ
+   danh sách có sẵn (Điều hòa, Máy giặt, Tủ lạnh, Laptop, Điện thoại, Máy tính
+   bàn, Tivi hoặc Khác); các trường khác là tùy chọn.
 5. **Tạo repair job:** chọn thiết bị rồi chọn **Create repair job**. Nhập mô tả
-   sự cố và số ngày dự kiến (số nguyên lớn hơn 0). Khi lưu thành công, job bắt
-   đầu ở trạng thái `RECEIVED`.
+   sự cố và số ngày dự kiến (được đánh dấu `*`; số ngày phải là số nguyên lớn
+   hơn 0). Khi lưu thành công, job bắt đầu ở trạng thái `RECEIVED`.
 6. **Xem repair history của khách hàng:** chọn tab con **Repair history** ở
    vùng hồ sơ khách hàng. Chọn một repair để xem các trạng thái kế tiếp có thể
    chọn và nhập ghi chú, rồi bấm **Update status**.
@@ -138,6 +144,8 @@ Tab **Estimate** tạo và xử lý các phiên bản báo giá cho repair job.
      đơn giá tối đa 2 chữ số thập phân.
    - Subtotal và tổng estimate được tính tự động; dòng sai dữ liệu sẽ hiển thị
      lỗi ngay trong tab tương ứng.
+   - Các trường bắt buộc được đánh dấu `*`. Số lượng, đơn giá, số giờ, subtotal
+     và tổng tiền hiển thị dấu phân tách hàng nghìn, ví dụ `2,000.00`.
 4. Khi repair đang `DIAGNOSING` hoặc `WAITING_FOR_APPROVAL`, nhập ghi chú nếu cần
    rồi bấm **Save as new draft version**. Mỗi lần lưu tạo một phiên bản `DRAFT`
    mới, không ghi đè các phiên bản trước. Các nút sửa và lưu bị khóa ở trạng
@@ -160,8 +168,8 @@ repair đủ điều kiện tạo warranty và chức năng nhập dữ liệu l
 
 1. Tìm trong danh sách **Repairs eligible for warranty** theo repair/thiết bị/
    khách hàng.
-2. Chọn một repair để xem thông tin và nhập ngày bắt đầu/kết thúc theo định
-   dạng `yyyy-MM-dd`.
+2. Chọn một repair để xem thông tin và nhập ngày bắt đầu/kết thúc (các trường
+   bắt buộc được đánh dấu `*`) theo định dạng `yyyy-MM-dd`.
 3. Ngày kết thúc phải cùng ngày hoặc sau ngày bắt đầu. Bấm **Create warranty**
    để lưu.
 4. Chỉ repair ở trạng thái `READY` hoặc `CLOSED`, chưa có warranty mới đủ điều

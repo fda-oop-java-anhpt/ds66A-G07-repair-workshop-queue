@@ -167,9 +167,9 @@ public class Warranty extends JPanel {
         repairDetails.add(deviceNameField);
         repairDetails.add(new JLabel("Customer:"));
         repairDetails.add(customerNameField);
-        repairDetails.add(new JLabel("Start date (yyyy-MM-dd):"));
+        repairDetails.add(requiredLabel("Start date (yyyy-MM-dd)"));
         repairDetails.add(fieldWithValidation(startDateField, startDateValidation));
-        repairDetails.add(new JLabel("End date (yyyy-MM-dd):"));
+        repairDetails.add(requiredLabel("End date (yyyy-MM-dd)"));
         repairDetails.add(fieldWithValidation(endDateField, endDateValidation));
         JButton createButton = createWarrantyButton;
         repairDetails.add(new JLabel());
@@ -502,6 +502,12 @@ public class Warranty extends JPanel {
         JLabel label = new JLabel(" ");
         label.setForeground(AppTheme.DANGER);
         label.setFont(AppTheme.BODY);
+        return label;
+    }
+
+    private static JLabel requiredLabel(String text) {
+        JLabel label = new JLabel(text + " *");
+        label.setForeground(AppTheme.DANGER);
         return label;
     }
 

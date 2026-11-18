@@ -27,8 +27,11 @@ import java.awt.Insets;
 import java.awt.Dimension;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import com.oop.project.config.AppContext;
 import com.oop.project.model.LaborService;
@@ -45,9 +48,9 @@ public class Estimate extends JPanel {
             new String[] { "DRAFT", "APPROVED", "REJECTED" });
     private final JTextArea noteArea = new JTextArea(3, 30);
     private final RefreshableTableModel partsModel = createEditableModel(
-            new String[] { "Part name", "Unit price", "Quantity", "Subtotal" });
+            new String[] { "Part name *", "Unit price *", "Quantity *", "Subtotal" });
     private final RefreshableTableModel laborModel = createEditableModel(
-            new String[] { "Labor description", "Hours", "Hourly rate", "Subtotal" });
+            new String[] { "Labor description *", "Hours *", "Hourly rate *", "Subtotal" });
     private final JTable partsTable = new JTable(partsModel);
     private final JTable laborTable = new JTable(laborModel);
     private final JLabel totalLabel = new JLabel("Total estimate: 0.00");
@@ -237,10 +240,16 @@ public class Estimate extends JPanel {
 
     private JPanel createLineItemsPanel() {
         JPanel lineItems = new JPanel(new BorderLayout(8, 8));
-        lineItems.setBorder(BorderFactory.createTitledBorder("Line items"));
+        lineItems.setBorder(BorderFactory.createTitledBorder("Line items (* required)"));
 
         AppTheme.styleTable(partsTable);
         AppTheme.styleTable(laborTable);
+        partsTable.getColumnModel().getColumn(1).setCellRenderer(numberRenderer("#,##0.00"));
+        partsTable.getColumnModel().getColumn(2).setCellRenderer(numberRenderer("#,##0"));
+        partsTable.getColumnModel().getColumn(3).setCellRenderer(numberRenderer("#,##0.00"));
+        laborTable.getColumnModel().getColumn(1).setCellRenderer(numberRenderer("#,##0.##"));
+        laborTable.getColumnModel().getColumn(2).setCellRenderer(numberRenderer("#,##0.00"));
+        laborTable.getColumnModel().getColumn(3).setCellRenderer(numberRenderer("#,##0.00"));
 
         JButton addPartButton = new JButton("Add part");
         lineItemActionButtons.add(addPartButton);
@@ -482,7 +491,8 @@ public class Estimate extends JPanel {
                 return;
             }
             BigDecimal total = calculatePartsTotal().add(calculateLaborTotal());
-            totalLabel.setText("Total estimate: " + total.setScale(2, RoundingMode.HALF_UP));
+            totalLabel.setText("Total estimate: "
+                    + formatNumber(total.setScale(2, RoundingMode.HALF_UP), "#,##0.00"));
             validationLabel.setText(context == null
                     ? "Prototype mode - not connected to PostgreSQL."
                     : "Ready to save to PostgreSQL.");
@@ -571,6 +581,35 @@ public class Estimate extends JPanel {
     private static String cellText(DefaultTableModel model, int row, int column) {
         Object value = model.getValueAt(row, column);
         return value == null ? "" : value.toString().trim();
+    }
+
+    private static javax.swing.table.TableCellRenderer numberRenderer(String pattern) {
+        DecimalFormat format = new DecimalFormat(pattern, DecimalFormatSymbols.getInstance(Locale.US));
+        format.setRoundingMode(RoundingMode.HALF_UP);
+        return new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            protected void setValue(Object value) {
+                if (value == null || value.toString().isBlank()) {
+                    setText("");
+                    return;
+                }
+                try {
+                    setText(formatNumber(new BigDecimal(value.toString()), format));
+                } catch (NumberFormatException exception) {
+                    setText(value.toString());
+                }
+            }
+        };
+    }
+
+    private static String formatNumber(BigDecimal value, String pattern) {
+        DecimalFormat format = new DecimalFormat(pattern, DecimalFormatSymbols.getInstance(Locale.US));
+        format.setRoundingMode(RoundingMode.HALF_UP);
+        return formatNumber(value, format);
+    }
+
+    private static String formatNumber(BigDecimal value, DecimalFormat format) {
+        return format.format(value);
     }
 
     private BigDecimal calculateLaborTotal() {

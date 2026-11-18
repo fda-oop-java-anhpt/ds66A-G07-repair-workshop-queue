@@ -73,21 +73,28 @@ các script SQL ở vị trí resources. Hai bộ script trong `database/` và
 ## Những chức năng đã triển khai
 
 - **Customers/Devices**: tìm kiếm và quản lý thông tin khách hàng, thiết bị;
-  xem lịch sử repair của khách hàng và tạo repair job cho thiết bị.
+  xem lịch sử repair của khách hàng và tạo repair job cho thiết bị. Các trường
+  bắt buộc được đánh dấu `*`; loại thiết bị được chọn từ danh sách có sẵn.
 - **Repair status**: cập nhật trạng thái từ Repair Queue hoặc lịch sử repair
   trong màn Customer; kiểm tra transition qua service và lưu status history.
 - **Repair Queue**: lọc danh sách và xem trạng thái/hạn dự kiến của các repair.
 - **Estimate**: tìm repair job theo mã, thiết bị, khách hàng hoặc mô tả; khi
   chọn repair, tự tải estimate mới nhất và cho phép xem các phiên bản đã lưu.
   Nhập Parts/Labor theo tab riêng, theo dõi tổng tiền, rồi lưu thành phiên bản
-  draft mới hoặc duyệt/từ chối draft mới nhất. Trường nhập kiểm tra định dạng
-  và range trước khi lưu.
+  draft mới hoặc duyệt/từ chối draft mới nhất. Trường bắt buộc được đánh dấu
+  `*`, số tiền và số liệu được hiển thị với dấu phân tách hàng nghìn (ví dụ
+  `2,000.00`). Trường nhập kiểm tra định dạng và range trước khi lưu.
 - **Warranty**: xem/tìm kiếm warranties và repairs đủ điều kiện; tạo warranty
   từ repair được chọn; import dữ liệu legacy. Repair đã có warranty không còn là
   candidate để tạo thêm warranty.
 - **Job History**: xem và lọc lịch sử chuyển trạng thái.
-- **Input validation**: hiển thị lỗi ngay cạnh trường nhập cho ngày Warranty,
-  ngày import, số liệu Estimate và số ngày khi tạo repair job.
+- **Input validation**: kiểm tra điện thoại khách hàng chỉ gồm chữ số và có
+  đúng 10 chữ số, kiểm tra định dạng email nếu được nhập; hiển thị lỗi ngay
+  dưới trường nhập thay vì popup validation cho biểu mẫu khách hàng. Các lỗi
+  nhập ngày Warranty, ngày import, số liệu Estimate và số ngày khi tạo repair
+  job cũng hiển thị cạnh trường liên quan.
+- **Required fields**: đánh dấu `*` trên các trường bắt buộc trong biểu mẫu
+  khách hàng, thiết bị, repair job, estimate và tạo warranty.
 
 Tài liệu này hướng dẫn **các bước bắt buộc** để sinh viên tạo repository cho project từ **template chính thức của học phần**, cũng như các **quy định về đặt tên, phân quyền và làm việc nhóm**.
 

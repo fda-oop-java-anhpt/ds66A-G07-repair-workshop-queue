@@ -77,3 +77,16 @@ java -cp ".\out;.\lib\*" com.oop.project.ui.Home
 
 Lệnh đầu tiên biên dịch toàn bộ file Java trong `src` vào thư mục `out`. Lệnh
 thứ hai mở giao diện chính của ứng dụng.
+
+## 6. Lưu ý khi nhập liệu
+
+- Các trường bắt buộc được đánh dấu `*`; các trường khác có thể để trống nếu
+  không có thông tin.
+- Điện thoại khách hàng chỉ chấp nhận chữ số và phải có đúng 10 chữ số;
+  biểu mẫu báo lỗi ngay khi giá trị chưa hợp lệ.
+- Email khách hàng có thể để trống; nếu nhập, biểu mẫu kiểm tra định dạng và
+  hiển thị cảnh báo ngay dưới trường nhập.
+- **Device type** được chọn từ danh sách có sẵn thay vì nhập tên tùy ý.
+- Các số trong bảng và tổng báo giá được hiển thị với dấu phân tách hàng nghìn,
+  ví dụ `2,000.00`. Đây là định dạng hiển thị; giá trị lưu trong database không
+  bị thay đổi.
