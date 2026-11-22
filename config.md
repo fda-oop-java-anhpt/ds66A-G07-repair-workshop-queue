@@ -42,11 +42,17 @@ psql -U postgres -d repair-workshop-queue -f .\database\schema.sql
 psql -U postgres -d repair-workshop-queue -f .\database\seed_data.sql
 ```
 
-Nhập password PostgreSQL nếu được hỏi. Có thể chạy các file tương ứng trong
-`src\main\resources\db` thay cho `database`, nhưng chỉ chạy **một bộ** script.
-Không chạy lại `schema.sql` hoặc `seed_data.sql` trên database có dữ liệu cần
+Nhập password PostgreSQL nếu được hỏi. Script SQL chỉ nằm trong thư mục
+`database`. Không chạy lại `schema.sql` hoặc `seed_data.sql` trên database có dữ liệu cần
 giữ: `schema.sql` xóa và tạo lại các bảng, còn `seed_data.sql` xóa dữ liệu rồi
 nạp dữ liệu mẫu.
+
+Kiểm tra nhanh sau khi nạp (kỳ vọng 7 repair: `RECEIVED` 1, `DIAGNOSING` 1,
+`WAITING_FOR_APPROVAL` 2, `REPAIRING` 1, `READY` 1, `CLOSED` 1):
+
+```powershell
+psql -U postgres -d repair-workshop-queue -c "SELECT status, COUNT(*) FROM repair_jobs GROUP BY status;"
+```
 
 ## 4. Cấu hình kết nối
 
@@ -90,3 +96,34 @@ thứ hai mở giao diện chính của ứng dụng.
 - Các số trong bảng và tổng báo giá được hiển thị với dấu phân tách hàng nghìn,
   ví dụ `2,000.00`. Đây là định dạng hiển thị; giá trị lưu trong database không
   bị thay đổi.
+
+## 7. Thử import bảo hành legacy với dữ liệu mẫu
+
+File legacy dùng UTF-8, mỗi dòng có dạng `serialNumber|STATUS|description`, với
+`STATUS` là `COVERED`, `EXPIRED` hoặc `NOT_COVERED`. Serial phải trùng thiết bị
+trong database. File mẫu `src\com\oop\project\adapter\warranty.txt` dùng các
+serial `IP13000`, `SN123456`, `IP13003` không có trong dữ liệu mẫu, nên các
+dòng đó sẽ không được lưu.
+
+Dữ liệu mẫu có các serial `DK-0001`, `PN-7788`, `LG-2031`, `DL-5521`. Hai thiết
+bị đầu đã có bảo hành legacy mẫu, nên để thử nhập mới hãy tạo một file UTF-8,
+ví dụ `legacy-test.txt`:
+
+```text
+LG-2031|COVERED|Thay quạt dàn lạnh
+DL-5521|EXPIRED|Thay pin laptop
+```
+
+Trong tab Warranty chọn **Import legacy file**, chọn file này, nhập ngày bắt
+đầu/kết thúc ở bảng review rồi xác nhận.
+
+## 8. Lỗi thường gặp
+
+| Triệu chứng | Nguyên nhân và cách xử lý |
+|---|---|
+| `Missing DB_USERNAME or DB_PASSWORD` | Thiếu thông tin trong `.env` hoặc biến môi trường. Kiểm tra bước 4 |
+| `Cannot read the project-root .env file` | Chạy ứng dụng không phải từ thư mục gốc project. `.env` được đọc theo đường dẫn tương đối, nên chạy lệnh `java` tại thư mục gốc |
+| `ClassNotFoundException: org.postgresql.Driver` hoặc lỗi không tìm thấy driver | Chưa có `lib\postgresql-42.7.14.jar`, hoặc thiếu `-cp ".\out;.\lib\*"` khi chạy |
+| `Connection ... refused` | Dịch vụ PostgreSQL chưa chạy, sai cổng hoặc sai `DB_URL` |
+| `relation ... does not exist` | Chưa chạy `schema.sql` trên database đang dùng, hoặc `DB_URL` trỏ sai database |
+| Tiếng Việt hiển thị sai khi biên dịch | Biên dịch thiếu `-encoding UTF-8` |

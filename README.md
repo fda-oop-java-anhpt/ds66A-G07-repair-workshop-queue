@@ -11,36 +11,32 @@ tác trên từng tab của ứng dụng.
 
 ```text
 .
-├── database/                         # SQL dùng để khởi tạo database local
-│   ├── schema.sql
-│   └── seed_data.sql
-├── config.md                         # Hướng dẫn cài PostgreSQL, cấu hình và chạy app
-├── docs/                             # Tài liệu yêu cầu và thiết kế
+├── database/                         # SQL khởi tạo database local (nguồn duy nhất)
+│   ├── schema.sql                    # 9 bảng, ràng buộc, index, trigger, view
+│   └── seed_data.sql                 # Dữ liệu mẫu cho demo
+├── docs/                             # Tài liệu yêu cầu, thiết kế và nhóm
 ├── lib/                              # PostgreSQL JDBC driver (cần tải riêng)
-├── src/
-│   ├── com/oop/project/              # Java source root
-│   │   ├── adapter/                  # Chuyển đổi/import dữ liệu legacy
-│   │   ├── config/                   # Kết nối database và AppContext
-│   │   ├── exception/                # Exception nghiệp vụ và truy cập dữ liệu
-│   │   ├── model/                    # Entity và domain model
-│   │   ├── repository/               # Repository interfaces, JDBC implementations,
-│   │   │                              # row mappers
-│   │   ├── sample_data/              # Dữ liệu mẫu
-│   │   ├── service/                  # Nghiệp vụ repair job và estimate
-│   │   ├── ui/                       # Swing screens, helpers và theme
-│   │   │   └── Home.java             # Entry point, mở giao diện chính
-│   │   └── util/                     # Tiện ích dùng chung
-│   └── main/resources/db/            # Bản schema và seed được đóng cùng resources
-│       ├── schema.sql
-│       └── seed_data.sql
+├── src/com/oop/project/              # Java source root (không dùng Maven)
+│   ├── adapter/                      # Đọc và chuyển đổi dữ liệu bảo hành legacy
+│   ├── config/                       # DatabaseConnection và AppContext
+│   ├── exception/                    # Lỗi nghiệp vụ và lỗi truy cập dữ liệu
+│   ├── model/                        # Entity, domain model và enum trạng thái
+│   ├── repository/                   # Interface repository
+│   │   ├── impl/                     # Cài đặt JDBC và transaction
+│   │   └── mapper/                   # Ánh xạ ResultSet sang model
+│   ├── sample_data/                  # Dữ liệu mẫu cho giao diện
+│   ├── service/                      # JobService: nghiệp vụ job và estimate
+│   ├── ui/                           # Màn hình Swing, helpers, theme
+│   │   └── Home.java                 # Entry point, mở giao diện chính
+│   └── util/                         # Tiện ích dùng chung
 ├── .env                              # Cấu hình database local (không commit)
 ├── README.md
-└── config.md
+├── WORKINGFLOW.md                    # Luồng khởi động và thao tác từng tab
+└── config.md                         # Cài đặt, cấu hình và chạy ứng dụng
 ```
 
-`src/com/oop/project` là source root Java hiện tại; `src/main/resources/db` giữ
-các script SQL ở vị trí resources. Hai bộ script trong `database/` và
-`src/main/resources/db/` hiện có cùng nội dung.
+`src/com/oop/project` là source root Java hiện tại. Script SQL chỉ nằm trong
+`database/`; không giữ bản sao ở nơi khác để tránh hai bản lệch nhau.
 
 ## Tra cứu file (file dictionary)
 
@@ -59,16 +55,17 @@ các script SQL ở vị trí resources. Hai bộ script trong `database/` và
 | `src/com/oop/project/config/AppContext.java` | Khởi tạo, kết nối các repository và service được dùng trong ứng dụng. |
 | `src/com/oop/project/model/` | Các entity/domain model như Customer, Device, RepairJob, Estimate, Part, LaborService, Warranty và status. |
 | `src/com/oop/project/repository/` | Hợp đồng truy cập dữ liệu, các JDBC implementation và row mapper cho PostgreSQL. |
-| `src/com/oop/project/service/JobService.java` và `JobServiceImpl.java` | Quy tắc nghiệp vụ cho repair job, cập nhật trạng thái và estimate. |
-| `src/com/oop/project/adapter/WarrantyFileImporter.java` | Đọc file warranty legacy theo định dạng `deviceId|STATUS|description`, xác thực từng dòng và báo số dòng lỗi. |
+| `src/com/oop/project/service/JobService.java` và `JobServiceImpl.java` | Quy tắc nghiệp vụ cho repair job, cập nhật trạng thái và estimate; `getAvailableNextStatuses` cho giao diện biết các trạng thái được phép chọn. |
+| `src/com/oop/project/adapter/WarrantyFileImporter.java` | Đọc file warranty legacy theo định dạng `serialNumber|STATUS|description`, xác thực từng dòng và báo số dòng lỗi. |
 | `src/com/oop/project/adapter/WarrantyAdapter.java` và `WarrantyResult.java` | Chuyển bản ghi legacy sang dạng kết quả thống nhất dùng trong màn review import. |
 | `src/com/oop/project/adapter/LegacyWarrantyImportAdapter.java` | Chuyển warranty legacy đủ điều kiện thành domain import; bỏ qua trạng thái `NOT_COVERED`. |
 | `src/com/oop/project/adapter/` | Adapter và model dữ liệu tương thích cho luồng warranty legacy. |
 | `src/com/oop/project/exception/` | Các exception về nghiệp vụ, trạng thái và truy cập dữ liệu. |
-| `database/schema.sql` | Tạo lại schema PostgreSQL cho môi trường local/dev/test. |
+| `database/schema.sql` | Tạo lại schema PostgreSQL (9 bảng, ràng buộc, index, trigger `updated_at`, view) cho môi trường local/dev/test. |
 | `database/seed_data.sql` | Xóa dữ liệu hiện có và nạp bộ dữ liệu mẫu sau khi tạo schema. |
-| `src/main/resources/db/` | Bản sao các SQL script để đóng gói cùng resources. |
-| `config.md` | Hướng dẫn cài PostgreSQL/JDBC driver, tạo database, cấu hình kết nối, biên dịch và chạy ứng dụng. |
+| `config.md` | Hướng dẫn cài PostgreSQL/JDBC driver, tạo database, cấu hình kết nối, biên dịch, chạy ứng dụng và xử lý lỗi thường gặp. |
+| `WORKINGFLOW.md` | Luồng khởi động và thao tác trên từng tab của ứng dụng. |
+| `docs/` | Yêu cầu (`requirements.md`), thiết kế (`design.md`), thông tin nhóm, khai báo AI và tự đánh giá. |
 
 ## Những chức năng đã triển khai
 
@@ -77,6 +74,10 @@ các script SQL ở vị trí resources. Hai bộ script trong `database/` và
   bắt buộc được đánh dấu `*`; loại thiết bị được chọn từ danh sách có sẵn.
 - **Repair status**: cập nhật trạng thái từ Repair Queue hoặc lịch sử repair
   trong màn Customer; kiểm tra transition qua service và lưu status history.
+  Danh sách trạng thái kế tiếp do `JobService.getAvailableNextStatuses` tính.
+  Chuyển sang `WAITING_FOR_APPROVAL` cần có estimate `DRAFT`; chuyển sang
+  `REPAIRING` hoặc đóng job từ `WAITING_FOR_APPROVAL` chỉ thực hiện qua
+  duyệt/từ chối estimate ở tab Estimate.
 - **Repair Queue**: lọc danh sách và xem trạng thái/hạn dự kiến của các repair.
 - **Estimate**: tìm repair job theo mã, thiết bị, khách hàng hoặc mô tả; khi
   chọn repair, tự tải estimate mới nhất và cho phép xem các phiên bản đã lưu.
@@ -84,17 +85,44 @@ các script SQL ở vị trí resources. Hai bộ script trong `database/` và
   draft mới hoặc duyệt/từ chối draft mới nhất. Trường bắt buộc được đánh dấu
   `*`, số tiền và số liệu được hiển thị với dấu phân tách hàng nghìn (ví dụ
   `2,000.00`). Trường nhập kiểm tra định dạng và range trước khi lưu.
+- **Quy tắc estimate**: chỉ lập estimate khi repair đang `DIAGNOSING` hoặc
+  `WAITING_FOR_APPROVAL`; mỗi lần lưu tạo một phiên bản `DRAFT` mới; mỗi job chỉ
+  có tối đa một estimate `APPROVED`.
 - **Warranty**: xem/tìm kiếm warranties và repairs đủ điều kiện; tạo warranty
-  từ repair được chọn; import dữ liệu legacy. Repair đã có warranty không còn là
+  từ repair được chọn; import dữ liệu legacy (khớp thiết bị theo serial number). Repair đã có warranty không còn là
   candidate để tạo thêm warranty.
 - **Job History**: xem và lọc lịch sử chuyển trạng thái.
 - **Input validation**: kiểm tra điện thoại khách hàng chỉ gồm chữ số và có
-  đúng 10 chữ số, kiểm tra định dạng email nếu được nhập; hiển thị lỗi ngay
+  đúng 10 chữ số (database cũng có ràng buộc `CHECK` tương ứng), kiểm tra định dạng email nếu được nhập; hiển thị lỗi ngay
   dưới trường nhập thay vì popup validation cho biểu mẫu khách hàng. Các lỗi
   nhập ngày Warranty, ngày import, số liệu Estimate và số ngày khi tạo repair
   job cũng hiển thị cạnh trường liên quan.
 - **Required fields**: đánh dấu `*` trên các trường bắt buộc trong biểu mẫu
   khách hàng, thiết bị, repair job, estimate và tạo warranty.
+
+## Cơ sở dữ liệu
+
+- **PostgreSQL, 9 bảng:** `customers`, `devices`, `repair_jobs`, `estimates`,
+  `parts`, `labor_services`, `status_history`, `warranties`, `payments`.
+- **Toàn vẹn dữ liệu:** các khóa ngoại đều `ON DELETE RESTRICT` (không xóa lan
+  truyền, giữ lịch sử sửa chữa); ràng buộc `CHECK` cho trạng thái, tiền và số
+  lượng, ngày bảo hành, điện thoại 10 chữ số, và `closed_at` chỉ có khi job
+  `CLOSED`; mỗi job chỉ có tối đa một estimate `APPROVED`, mỗi repair tối đa
+  một bảo hành.
+- **Trigger:** `set_updated_at` tự cập nhật `updated_at` cho `customers`,
+  `devices`, `repair_jobs`, `estimates` và `warranties`.
+- **Truy cập dữ liệu:** JDBC thuần với `PreparedStatement`; kết nối tạo từ
+  `DatabaseConnection` (cấu hình bằng `.env` hoặc biến môi trường). Năm thao tác
+  chạy trong một transaction (commit hoặc rollback toàn bộ): tạo job kèm lịch
+  sử đầu tiên, đổi trạng thái kèm lịch sử, lưu estimate cùng các dòng chi tiết,
+  duyệt/từ chối estimate kèm cập nhật job và lịch sử, và import warranty legacy.
+- **View:** `v_repair_queue`, `v_warranty_list`, `v_warranty_candidates` có
+  trong schema nhưng mã Java hiện truy vấn trực tiếp các bảng.
+- **Bảng `payments`:** có trong schema và dữ liệu mẫu nhưng chưa có model,
+  repository hay màn hình trong Java, nên chưa có ràng buộc "đóng job phải
+  thanh toán đủ".
+
+Chi tiết thiết kế xem [docs/design.md](./docs/design.md).
 
 Tài liệu này hướng dẫn **các bước bắt buộc** để sinh viên tạo repository cho project từ **template chính thức của học phần**, cũng như các **quy định về đặt tên, phân quyền và làm việc nhóm**.
 
@@ -261,7 +289,13 @@ cấu hình thông tin kết nối, biên dịch toàn bộ source bằng `javac
 diện `Home`.
 
 File legacy bảo hành có một bản ghi mỗi dòng, theo định dạng
-`deviceId|COVERED|description`, `deviceId|EXPIRED|description` hoặc
-`deviceId|NOT_COVERED|description`. Khi nhập, điền ngày bắt đầu/kết thúc thực tế
-cho các bản ghi `COVERED` và `EXPIRED`; `NOT_COVERED` không được lưu thành bảo
-hành. Nhập lại cùng file sẽ nhận diện các dòng đã nhập trước đó.
+`serialNumber|COVERED|description`, `serialNumber|EXPIRED|description` hoặc
+`serialNumber|NOT_COVERED|description`; `serialNumber` phải trùng số serial của
+một thiết bị trong database. Khi nhập, điền ngày bắt đầu/kết thúc thực tế cho
+các bản ghi `COVERED` và `EXPIRED`; `NOT_COVERED` không được lưu thành bảo
+hành. Nhập lại cùng file sẽ nhận diện các dòng đã nhập trước đó và bỏ qua.
+
+File mẫu `src/com/oop/project/adapter/warranty.txt` dùng các serial `IP13000`,
+`SN123456`, `IP13003` không có trong dữ liệu mẫu, nên khi nhập các dòng này sẽ
+không được lưu. Để thử với dữ liệu mẫu, dùng serial có sẵn (`LG-2031`,
+`DL-5521`), xem [config.md](./config.md).

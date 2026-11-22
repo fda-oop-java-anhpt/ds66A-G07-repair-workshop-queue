@@ -20,7 +20,8 @@ trên giao diện Java Swing. Ứng dụng gồm năm tab: **Customers/Devices**
 
    Có thể dùng environment variables thay cho `.env`. Environment variables
    được ưu tiên nếu cùng khóa đã có trong cả hai nơi.
-4. Biên dịch và chạy từ PowerShell tại thư mục gốc:
+4. Biên dịch và chạy từ PowerShell tại thư mục gốc (phải chạy tại thư mục gốc
+   vì `.env` được đọc theo đường dẫn tương đối):
 
    ```powershell
    $files = Get-ChildItem .\src -Recurse -Filter *.java |
@@ -108,8 +109,9 @@ vùng tìm kiếm/cập nhật ở bên phải.
 1. Dùng các trường lọc để tìm theo nội dung tổng quát, nhóm trạng thái, thiết
    bị, khách hàng, triệu chứng hoặc ghi nhận; chọn thứ tự ngày nhận nếu cần.
 2. Chọn **Search** để áp dụng bộ lọc; **Reset filters** xóa các điều kiện lọc.
-3. Chọn repair trong danh sách đã lọc, chọn trạng thái kế tiếp đang được phép,
-   nhập ghi chú nếu cần và bấm **Update selected repair**.
+3. Chọn repair trong danh sách đã lọc, chọn trạng thái kế tiếp đang được phép
+   (danh sách do `JobService.getAvailableNextStatuses` tính), nhập ghi chú nếu
+   cần và bấm **Update selected repair**.
 4. Ứng dụng kiểm tra chuyển trạng thái qua `JobService`, lưu thay đổi cùng một
    bản ghi history, rồi tải lại Queue, Job History và Warranty.
 5. Khi job đang `DIAGNOSING`, cần lưu một estimate `DRAFT` trong tab Estimate
@@ -122,9 +124,9 @@ Các chuyển trạng thái hợp lệ:
 | Trạng thái hiện tại | Trạng thái tiếp theo | Điều kiện |
 |---|---|---|
 | `RECEIVED` | `DIAGNOSING` | Bắt đầu chẩn đoán |
-| `DIAGNOSING` | `WAITING_FOR_APPROVAL` | Gửi estimate để khách duyệt |
-| `WAITING_FOR_APPROVAL` | `REPAIRING` | Chỉ được chuyển khi estimate mới nhất đã được duyệt |
-| `WAITING_FOR_APPROVAL` | `CLOSED` | Chỉ được đóng theo luồng khách từ chối estimate |
+| `DIAGNOSING` | `WAITING_FOR_APPROVAL` | Gửi estimate để khách duyệt; cần có estimate `DRAFT` mới nhất |
+| `WAITING_FOR_APPROVAL` | `REPAIRING` | Thực hiện bằng **Approve latest** ở tab Estimate; không chọn trực tiếp từ Queue |
+| `WAITING_FOR_APPROVAL` | `CLOSED` | Thực hiện bằng **Reject latest** ở tab Estimate (khách từ chối estimate) |
 | `REPAIRING` | `READY` | Hoàn tất sửa chữa |
 | `READY` | `CLOSED` | Đóng đơn sau khi hoàn tất/bàn giao |
 
@@ -189,7 +191,9 @@ repair đủ điều kiện tạo warranty và chức năng nhập dữ liệu l
    ```
 
    `STATUS` là `COVERED`, `EXPIRED` hoặc `NOT_COVERED`; ví dụ:
-   `SN123456|COVERED|Screen repair`.
+   `LG-2031|COVERED|Thay quạt dàn lạnh`. `serialNumber` phải trùng số serial của
+   một thiết bị trong database (dữ liệu mẫu có `DK-0001`, `PN-7788`, `LG-2031`,
+   `DL-5521`).
 2. Ứng dụng đọc và kiểm tra file, sau đó mở bảng review. Nhập ngày bắt đầu và
    kết thúc cho mỗi dòng `COVERED`/`EXPIRED`. Ngày phải đúng định dạng và khớp
    với trạng thái legacy: `COVERED` có ngày kết thúc hôm nay hoặc trong tương
