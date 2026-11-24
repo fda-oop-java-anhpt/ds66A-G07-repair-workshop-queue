@@ -7,7 +7,7 @@
 
 | Thành viên | Phần việc đã thực hiện | Bằng chứng / ghi chú |
 |---|---|---|
-| Dương Minh Anh | Thiết kế logic và Adapter | [] |
+| Dương Minh Anh | Thiết kế logic và Adapter | Các file trong thư mục `model/`, `adapter/`, `service/`, `exception/DomainException.java`, `exception/InvalidStatusTransitionException.java`, `exception/EntityNotFoundException.java` |
 | Hà Thu Hà | Thiết kế UI | Các file trong thư mục `ui/` |
 | Đinh Vân Anh | Thiết kế Database và tầng Repository (JDBC) | `database/schema.sql`, `database/seed_data.sql`, `repository/`, `config/`; chi tiết bên dưới |
 
